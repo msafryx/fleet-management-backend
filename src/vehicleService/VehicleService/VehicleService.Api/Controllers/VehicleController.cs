@@ -1,4 +1,5 @@
 ﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
 using VehicleService.Application.Interfaces;
 using VehicleService.Application.DTOs;
 using VehicleService.Domain.Entities;
