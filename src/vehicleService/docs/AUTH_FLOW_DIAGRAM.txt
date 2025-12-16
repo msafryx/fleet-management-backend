@@ -1,0 +1,278 @@
+================================================================================
+KEYCLOAK AUTHENTICATION FLOW - VISUAL DIAGRAM
+Fleet Management System
+================================================================================
+
+┌─────────────────────────────────────────────────────────────────────────┐
+│                        AUTHENTICATION FLOW                              │
+└─────────────────────────────────────────────────────────────────────────┘
+
+Step 1: Initial Access
+─────────────────────
+User → Browser → http://localhost:3000
+                 ↓
+          [Login Page Loads]
+                 ↓
+        "Sign In with Keycloak" Button
+
+
+Step 2: Redirect to Keycloak
+────────────────────────────
+User clicks button
+         ↓
+NextAuth redirects to:
+http://localhost:8080/realms/fleet-management-app/protocol/openid-connect/auth
+         ↓
+[Keycloak Login Page]
+         ↓
+User enters: username / password
+
+
+Step 3: Keycloak Authentication
+───────────────────────────────
+Keycloak validates credentials
+         ↓
+    [Valid? Yes]
+         ↓
+Keycloak creates session
+         ↓
+Generates: 
+  - Access Token (JWT)
+  - ID Token
+  - Refresh Token
+
+
+Step 4: Callback to Frontend
+────────────────────────────
+Keycloak redirects to:
+http://localhost:3000/api/auth/callback/keycloak?code=ABC123
+         ↓
+NextAuth API route processes callback
+         ↓
+Exchanges code for tokens
+         ↓
+Creates NextAuth session
+         ↓
+Stores in HTTP-only cookie
+
+
+Step 5: Dashboard Access
+────────────────────────
+Redirects to: /dashboard
+         ↓
+Dashboard layout loads
+         ↓
+useAuth() hook provides:
+  - user info
+  - accessToken
+  - isAuthenticated
+
+
+Step 6: API Calls with Token
+────────────────────────────
+useAuthenticatedApi() hook runs
+         ↓
+Sets token on API clients:
+  vehicleApi.setAuthToken(accessToken)
+  driverApi.setAuthToken(accessToken)
+  maintenanceApi.setAuthToken(accessToken)
+         ↓
+All API calls include:
+Authorization: Bearer {JWT_TOKEN}
+
+
+┌─────────────────────────────────────────────────────────────────────────┐
+│                        API REQUEST FLOW                                 │
+└─────────────────────────────────────────────────────────────────────────┘
+
+Frontend Component
+       ↓
+  vehicleApi.get('/api/vehicles')
+       ↓
+  baseApi adds header:
+  Authorization: Bearer eyJhbGc...
+       ↓
+  HTTP Request →
+       ↓
+Backend Service (Vehicle/Driver/Maintenance)
+       ↓
+  Extracts JWT token
+       ↓
+  Validates with Keycloak:
+  - Signature verification
+  - Expiration check
+  - Issuer validation
+       ↓
+  [Valid? Yes]
+       ↓
+  Extracts user info & roles
+       ↓
+  Processes request
+       ↓
+  Returns response
+       ↓
+  ← HTTP Response
+       ↓
+Frontend Component receives data
+
+
+┌─────────────────────────────────────────────────────────────────────────┐
+│                        TOKEN VALIDATION                                 │
+└─────────────────────────────────────────────────────────────────────────┘
+
+Backend receives request with:
+Authorization: Bearer eyJhbGciOiJSUzI1NiIsInR5cCI6...
+                      ↓
+                [Extract Token]
+                      ↓
+┌─────────────────────────────────────────────────────────────┐
+│  JWT Token Structure:                                       │
+│                                                              │
+│  Header:                                                     │
+│    {                                                         │
+│      "alg": "RS256",                                         │
+│      "typ": "JWT"                                            │
+│    }                                                         │
+│                                                              │
+│  Payload:                                                    │
+│    {                                                         │
+│      "sub": "user-id",                                       │
+│      "iss": "http://localhost:8080/realms/fleet-management-app", │
+│      "aud": "vehicle-service",                               │
+│      "exp": 1234567890,                                      │
+│      "iat": 1234567890,                                      │
+│      "realm_access": {                                       │
+│        "roles": ["fleet-admin"]                              │
+│      }                                                       │
+│    }                                                         │
+│                                                              │
+│  Signature: [RSA256 signature]                              │
+└─────────────────────────────────────────────────────────────┘
+                      ↓
+Backend validates:
+  1. Signature with Keycloak public key
+  2. Expiration (exp claim)
+  3. Issuer (iss claim)
+  4. Audience (aud claim - optional)
+                      ↓
+                [Valid? Yes]
+                      ↓
+          Request is authorized
+                      ↓
+        Process & return response
+
+
+┌─────────────────────────────────────────────────────────────────────────┐
+│                        LOGOUT FLOW                                      │
+└─────────────────────────────────────────────────────────────────────────┘
+
+User clicks "Logout"
+       ↓
+logout() function called
+       ↓
+signOut({ callbackUrl: '/login' })
+       ↓
+NextAuth clears session cookie
+       ↓
+Optionally notifies Keycloak (end-session endpoint)
+       ↓
+Redirects to /login
+       ↓
+useAuthenticatedApi() clears tokens from API clients
+       ↓
+User is logged out
+
+
+┌─────────────────────────────────────────────────────────────────────────┐
+│                        TOKEN REFRESH FLOW                               │
+└─────────────────────────────────────────────────────────────────────────┘
+
+Access token expires (default: 5 minutes)
+       ↓
+NextAuth detects expiration
+       ↓
+Uses refresh token to get new access token
+       ↓
+Keycloak validates refresh token
+       ↓
+Issues new access token
+       ↓
+NextAuth updates session
+       ↓
+User continues without re-login
+
+
+┌─────────────────────────────────────────────────────────────────────────┐
+│                     ROLE-BASED ACCESS CONTROL                           │
+└─────────────────────────────────────────────────────────────────────────┘
+
+JWT Token contains:
+  realm_access: {
+    roles: ["fleet-admin"]
+  }
+       ↓
+Frontend maps roles:
+  fleet-admin → admin
+  fleet-employee → employee
+       ↓
+Components check:
+  if (user.role === 'admin') {
+    // Show admin features
+  }
+       ↓
+Backend validates:
+  - Token has required role
+  - Endpoint authorization
+  - Resource-level permissions
+
+
+┌─────────────────────────────────────────────────────────────────────────┐
+│                     ERROR HANDLING                                      │
+└─────────────────────────────────────────────────────────────────────────┘
+
+Backend returns 401 Unauthorized
+       ↓
+fetchWithAuth() detects 401
+       ↓
+Redirects to /login
+       ↓
+User must re-authenticate
+
+
+Backend returns 403 Forbidden
+       ↓
+User is authenticated but lacks permission
+       ↓
+Show error message
+       ↓
+Don't redirect (user is still logged in)
+
+
+Token validation fails
+       ↓
+Backend logs error
+       ↓
+Returns 401 response
+       ↓
+Frontend handles as above
+
+
+================================================================================
+SYSTEM COMPONENTS
+================================================================================
+
+┌────────────────┐     ┌─────────────────┐     ┌──────────────────┐
+│    Frontend    │────→│    Keycloak     │←────│  Backend Services│
+│  (Next.js)     │     │  (Auth Server)  │     │   (C#/Java/Py)   │
+│                │     │                 │     │                  │
+│ - Login UI     │     │ - User Store    │     │ - Vehicle API    │
+│ - NextAuth     │     │ - Token Issuer  │     │ - Driver API     │
+│ - Session Mgmt │     │ - Public Keys   │     │ - Maintenance API│
+│ - API Calls    │     │ - OIDC Endpoint │     │ - Token Validation│
+└────────────────┘     └─────────────────┘     └──────────────────┘
+       ↓                       ↑                        ↑
+       └───────────────────────┴────────────────────────┘
+              Token in Authorization header
+
+================================================================================
+

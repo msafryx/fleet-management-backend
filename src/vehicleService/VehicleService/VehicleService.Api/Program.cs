@@ -4,6 +4,7 @@ using VehicleService.Infrastructure;
 using VehicleService.Infrastructure.Data;
 using static VehicleService.Infrastructure.Data.DatabaseSeeder;
 using VehicleService.Api.BackgroundServices;
+using Microsoft.AspNetCore.Authorization; // Add this
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -39,7 +40,7 @@ builder.Services.AddCors(options =>
     });
 });
 
-// Swagger (OpenAPI)
+// Add Swagger (OpenAPI)
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
 {
@@ -49,6 +50,77 @@ builder.Services.AddSwaggerGen(c =>
         Version = "v1",
         Description = "Fleet Management Vehicle Service API - manages vehicles, maintenance, and dispatch info."
     });
+    
+    // Add Security Definition
+    c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
+    {
+        Description = "JWT Authorization header using the Bearer scheme. Example: \"Authorization: Bearer {token}\"",
+        Name = "Authorization",
+        In = ParameterLocation.Header,
+        Type = SecuritySchemeType.ApiKey,
+        Scheme = "Bearer"
+    });
+
+    c.AddSecurityRequirement(new OpenApiSecurityRequirement
+    {
+        {
+            new OpenApiSecurityScheme
+            {
+                Reference = new OpenApiReference
+                {
+                    Type = ReferenceType.SecurityScheme,
+                    Id = "Bearer"
+                }
+            },
+            Array.Empty<string>()
+        }
+    });
+});
+
+// Add Authentication
+builder.Services.AddAuthentication("Bearer")
+    .AddJwtBearer("Bearer", options =>
+    {
+        options.Authority = builder.Configuration["Authentication:JwtBearer:Authority"];
+        options.Audience = builder.Configuration["Authentication:JwtBearer:Audience"];
+        options.RequireHttpsMetadata = bool.Parse(builder.Configuration["Authentication:JwtBearer:RequireHttpsMetadata"] ?? "false");
+        
+        // Development mode: If Authority is not reachable, don't crash on startup, but requests will fail validation
+        // In .NET 7+, validation happens at request time.
+        
+        options.TokenValidationParameters = new Microsoft.IdentityModel.Tokens.TokenValidationParameters
+        {
+            ValidateAudience = false, // Allow if audience is not strictly set in token
+            ValidateIssuer = true,
+            ValidateLifetime = true,
+        };
+        
+        // Handle events if needed for debugging
+        options.Events = new Microsoft.AspNetCore.Authentication.JwtBearer.JwtBearerEvents
+        {
+            OnAuthenticationFailed = context =>
+            {
+                Console.WriteLine("Authentication Failed: " + context.Exception.Message);
+                return Task.CompletedTask;
+            }
+        };
+    });
+
+
+// Add Authorization with Fallback Policy
+builder.Services.AddAuthorization(options =>
+{
+    // Default Policy: User must be authenticated
+    options.FallbackPolicy = new AuthorizationPolicyBuilder()
+        .RequireAuthenticatedUser()
+        .Build();
+
+    // Admin Only Policy
+    options.AddPolicy("AdminOnly", policy => 
+        policy.RequireAssertion(context => 
+            context.User.IsInRole("fleet-admin") || 
+            context.User.HasClaim(c => c.Type == "realm_access" && c.Value.Contains("fleet-admin"))
+        ));
 });
 
 // Add PostgreSQL + Infrastructure Layer (DbContext + Repository)
@@ -77,6 +149,7 @@ app.UseHttpsRedirection();
 // Enable CORS
 app.UseCors();
 
+app.UseAuthentication(); // <--- Add this before Authorization
 app.UseAuthorization();
 
 // Map controllers
@@ -86,7 +159,7 @@ app.MapControllers();
 // 🔹 Health Check Endpoints
 // --------------------------------------------------
 // Basic health check for Docker
-app.MapGet("/health", () => Results.Ok(new { status = "healthy", service = "vehicle-service" }));
+app.MapGet("/health", () => Results.Ok(new { status = "healthy", service = "vehicle-service" })).AllowAnonymous();
 
 // Database health check
 app.MapGet("/health/db", async (VehicleDbContext db) =>
@@ -100,10 +173,10 @@ app.MapGet("/health/db", async (VehicleDbContext db) =>
     {
         return Results.Problem(ex.Message);
     }
-});
+}).AllowAnonymous();
 
 // Root endpoint
-app.MapGet("/", () => "✅ Vehicle Service Running and Healthy!");
+app.MapGet("/", () => "✅ Vehicle Service Running and Healthy!").AllowAnonymous();
 
 // --------------------------------------------------
 // 🔹 Database Initialization (Migrations + Seeding)

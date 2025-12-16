@@ -1,0 +1,67 @@
+version: '3.9'
+
+# ===============================
+# Fleet Management - Keycloak Identity Service
+# ===============================
+#
+# ⚠️ DATABASE INFRASTRUCTURE CHANGE:
+# PostgreSQL database is now managed centrally in infrastructure/data/
+# You must start the data infrastructure first:
+#   cd ../data && docker-compose up -d
+#
+# Database Connection:
+# - Uses postgres-keycloak from fleet-data-network
+# - Port: 8433 (external), 5432 (internal)
+#
+# Keycloak Configuration:
+# - Admin Console: http://localhost:8080
+# - Admin Credentials: admin / admin
+# - Production mode with HTTP enabled for local development
+#
+# 📚 Documentation:
+# - Database Setup: See ../data/README.md
+# - pgAdmin Access: http://localhost:5050 (centralized instance)
+#
+# ===============================
+
+services:
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.0
+    container_name: fleet-keycloak
+    #command: start --optimized
+    command: start-dev
+
+    environment:
+      # Administrative User
+      KC_BOOTSTRAP_ADMIN_USERNAME: admin
+      KC_BOOTSTRAP_ADMIN_PASSWORD: admin
+      
+      # Database Configuration (PostgreSQL from Infrastructure)
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://postgres-keycloak:5432/keycloak
+      KC_DB_USERNAME: keycloak
+      KC_DB_PASSWORD: keycloak_password
+      KC_DB_SCHEMA: public
+
+      # Hostname & Proxy Configuration (Production Mode)
+      # In production, this should be your actual domain (e.g., auth.fleet.com)
+      # For local "production-like" setup, we use localhost but enable HTTP
+      KC_HOSTNAME: localhost
+      KC_HOSTNAME_STRICT: "false"
+      KC_HOSTNAME_STRICT_HTTPS: "false"
+      KC_HTTP_ENABLED: "true"
+      KC_PROXY: edge 
+
+      # Logging
+      KC_LOG_LEVEL: INFO
+
+    ports:
+      - "8080:8080"
+    networks:
+      - fleet-data-network
+    restart: always
+
+networks:
+  fleet-data-network:
+    external: true
+

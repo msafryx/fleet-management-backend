@@ -6,10 +6,12 @@ from app.schemas.maintainance_schema import (
     MaintenanceItemUpdateSchema
 )
 from marshmallow import ValidationError
+from app.utils.auth import require_auth, require_role
 
 maintenance_bp = Blueprint('maintenance', __name__)
 
 @maintenance_bp.route('/', methods=['GET'])
+@require_auth
 def get_maintenance_items():
     """Get all maintenance items with optional filtering"""
     try:
@@ -34,6 +36,7 @@ def get_maintenance_items():
         return jsonify({'error': str(e)}), 500
 
 @maintenance_bp.route('/<item_id>', methods=['GET'])
+@require_auth
 def get_maintenance_item(item_id):
     """Get a single maintenance item"""
     try:
@@ -47,6 +50,7 @@ def get_maintenance_item(item_id):
         return jsonify({'error': str(e)}), 500
 
 @maintenance_bp.route('/', methods=['POST'])
+@require_auth
 def create_maintenance_item():
     """Create a new maintenance item"""
     try:
@@ -62,6 +66,7 @@ def create_maintenance_item():
         return jsonify({'error': str(e)}), 500
 
 @maintenance_bp.route('/<item_id>', methods=['PUT', 'PATCH'])
+@require_auth
 def update_maintenance_item(item_id):
     """Update a maintenance item"""
     try:
@@ -80,6 +85,8 @@ def update_maintenance_item(item_id):
         return jsonify({'error': str(e)}), 500
 
 @maintenance_bp.route('/<item_id>', methods=['DELETE'])
+@require_auth
+@require_role('fleet-admin')
 def delete_maintenance_item(item_id):
     """Delete a maintenance item"""
     try:
@@ -93,6 +100,7 @@ def delete_maintenance_item(item_id):
         return jsonify({'error': str(e)}), 500
 
 @maintenance_bp.route('/summary', methods=['GET'])
+@require_auth
 def get_maintenance_summary():
     """Get maintenance summary statistics"""
     try:
@@ -103,6 +111,7 @@ def get_maintenance_summary():
         return jsonify({'error': str(e)}), 500
 
 @maintenance_bp.route('/vehicle/<vehicle_id>/history', methods=['GET'])
+@require_auth
 def get_vehicle_history(vehicle_id):
     """Get maintenance history for a vehicle"""
     try:
@@ -113,6 +122,8 @@ def get_vehicle_history(vehicle_id):
         return jsonify({'error': str(e)}), 500
 
 @maintenance_bp.route('/status/update-bulk', methods=['POST'])
+@require_auth
+@require_role('fleet-admin')
 def update_statuses_bulk():
     """Background job endpoint to update maintenance statuses"""
     try:

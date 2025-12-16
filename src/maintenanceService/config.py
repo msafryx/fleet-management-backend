@@ -5,7 +5,6 @@ import dotenv
 dotenv.load_dotenv()
 
 class Config:
-    SECRET_KEY = os.environ.get('SECRET_KEY') or 'dev-secret-key-change-in-production'
     SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URL') or 'postgresql://postgres:postgres@localhost:5433/maintenance_db'
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     SQLALCHEMY_ECHO = True
@@ -16,6 +15,10 @@ class Config:
     
     # CORS
     CORS_ORIGINS = os.environ.get('CORS_ORIGINS', '*')
+    
+    # OIDC / Keycloak
+    OIDC_ISSUER = os.environ.get('OIDC_ISSUER')  # e.g. http://keycloak:8080/realms/fleet-management-app
+    AUTH_DISABLED = os.environ.get('AUTH_DISABLED', 'False').lower() == 'true'
 
 class DevelopmentConfig(Config):
     DEBUG = True

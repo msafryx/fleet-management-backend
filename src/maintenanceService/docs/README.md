@@ -318,7 +318,6 @@ Both services can run simultaneously without conflicts.
 
 ### Security Checklist
 - [ ] Change default PostgreSQL password
-- [ ] Set strong SECRET_KEY
 - [ ] Configure CORS_ORIGINS to specific domains
 - [ ] Enable HTTPS
 - [ ] Set up database backups
@@ -327,7 +326,6 @@ Both services can run simultaneously without conflicts.
 ### Environment Variables
 ```env
 FLASK_ENV=production
-SECRET_KEY=<strong-random-key>
 DATABASE_URL=postgresql://<user>:<pass>@<host>:<port>/maintenance_db
 CORS_ORIGINS=https://yourdomain.com
 ```

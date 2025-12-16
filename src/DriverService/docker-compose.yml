@@ -4,16 +4,26 @@ version: "3.9"
 # Driver Service Docker Compose
 # ===============================
 # 
+# ⚠️ DATABASE INFRASTRUCTURE CHANGE:
+# PostgreSQL database is now managed centrally in infrastructure/data/
+# You must start the data infrastructure first:
+#   cd ../../infrastructure/data && docker-compose up -d
+#
+# Database Connection:
+# - Uses postgres-driver from fleet-data-network
+# - Local dev: localhost:6433
+# - Docker: postgres-driver:5432
+#
 # Database Initialization:
 # - Schema: Created automatically via Hibernate (ddl-auto: update)
-# - Data: Managed by the application
+# - Data: Managed by the application via Flyway migrations
 #
 # Ports:
 # - Driver Service: localhost:6001
-# - PostgreSQL: localhost:6433 (to avoid conflicts with other PostgreSQL instances)
-# - pgAdmin (optional): localhost:5055 (start with --profile admin)
 #
 # 📚 Documentation:
+# - Database Setup: See ../../infrastructure/data/README.md
+# - pgAdmin Access: http://localhost:5050 (centralized instance)
 # - API Documentation: See README.md for service endpoints and usage
 
 services:
@@ -24,9 +34,6 @@ services:
     container_name: driver-service
     ports:
       - "6001:6001"
-    depends_on:
-      postgres-driver:
-        condition: service_healthy
     environment:
       SPRING_PROFILES_ACTIVE: docker
       DB_HOST: postgres-driver
@@ -37,49 +44,9 @@ services:
       SERVER_PORT: 6001
     restart: always
     networks:
-      - driver-network
-
-  postgres-driver:
-    image: postgres:16
-    container_name: postgres-driver
-    environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: driver_db
-    ports:
-      - "6433:5432"          # host:container (use 6433 on host to avoid conflicts)
-    volumes:
-      - driver_pg_data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d driver_db"]
-      interval: 5s
-      timeout: 3s
-      retries: 10
-    networks:
-      - driver-network
-
-  # Optional: pgAdmin for database management
-  # To start: docker-compose --profile admin up -d
-  pgadmin-driver:
-    image: dpage/pgadmin4:8
-    container_name: pgadmin-driver
-    environment:
-      # Login credentials for pgAdmin web interface (http://localhost:5055)
-      PGADMIN_DEFAULT_EMAIL: admin@admin.com
-      PGADMIN_DEFAULT_PASSWORD: admin123
-    ports:
-      - "5055:80"          # Access at http://localhost:5055
-    depends_on:
-      - postgres-driver
-    networks:
-      - driver-network
-    profiles:
-      - admin              # Only starts with --profile admin flag
-
-volumes:
-  driver_pg_data:
+      - fleet-data-network
 
 networks:
-  driver-network:
-    driver: bridge
+  fleet-data-network:
+    external: true
 

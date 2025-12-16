@@ -4,6 +4,16 @@ version: "3.9"
 # Vehicle Service Docker Compose
 # ===============================
 # 
+# ⚠️ DATABASE INFRASTRUCTURE CHANGE:
+# PostgreSQL database is now managed centrally in infrastructure/data/
+# You must start the data infrastructure first:
+#   cd ../../infrastructure/data && docker-compose up -d
+#
+# Database Connection:
+# - Uses postgres-vehicle from fleet-data-network
+# - Local dev: localhost:7433
+# - Docker: postgres-vehicle:5432
+#
 # Database Initialization:
 # - Schema: Created automatically via Entity Framework migrations
 # - Sample Data: Seeded automatically by DatabaseSeeder.cs on first run
@@ -11,11 +21,10 @@ version: "3.9"
 #
 # Ports:
 # - Vehicle Service: localhost:7001
-# - PostgreSQL: localhost:7433 (to avoid conflicts with other PostgreSQL instances)
-# - pgAdmin (optional): localhost:5050 (start with --profile admin)
 #
 # 📚 Documentation:
-# - pgAdmin Setup: See PGADMIN_GUIDE.md for web interface access and configuration
+# - Database Setup: See ../../infrastructure/data/README.md
+# - pgAdmin Access: http://localhost:5050 (centralized instance)
 # - API Documentation: See README.md for service endpoints and usage
 
 services:
@@ -26,9 +35,6 @@ services:
     container_name: vehicle-service
     ports:
       - "7001:8080"
-    depends_on:
-      postgres-vehicle:
-        condition: service_healthy
     environment:
       ASPNETCORE_ENVIRONMENT: Development
       ConnectionStrings__DefaultConnection: "Host=postgres-vehicle;Port=5432;Database=vehicle_db;Username=postgres;Password=postgres"
@@ -38,49 +44,8 @@ services:
       - ./VehicleService:/src/VehicleService
     restart: always
     networks:
-      - vehicle-network
-
-  postgres-vehicle:
-    image: postgres:16
-    container_name: postgres-vehicle
-    environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: vehicle_db
-    ports:
-      - "7433:5432"          # host:container (use 7433 on Windows to avoid local 5432 clashes)
-    volumes:
-      - vehicle_pg_data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d vehicle_db"]
-      interval: 5s
-      timeout: 3s
-      retries: 10
-    networks:
-      - vehicle-network
-
-  # Optional: pgAdmin for database management
-  # To start: docker-compose --profile admin up -d
-  # 📚 See PGADMIN_GUIDE.md for detailed setup and connection instructions
-  pgadmin-vehicle:
-    image: dpage/pgadmin4:8
-    container_name: pgadmin-vehicle
-    environment:
-      # Login credentials for pgAdmin web interface (http://localhost:5050)
-      PGADMIN_DEFAULT_EMAIL: admin@admin.com
-      PGADMIN_DEFAULT_PASSWORD: admin123
-    ports:
-      - "5050:80"          # Access at http://localhost:5050
-    depends_on:
-      - postgres-vehicle
-    networks:
-      - vehicle-network
-    profiles:
-      - admin              # Only starts with --profile admin flag
-
-volumes:
-  vehicle_pg_data:
+      - fleet-data-network
 
 networks:
-  vehicle-network:
-    driver: bridge
+  fleet-data-network:
+    external: true

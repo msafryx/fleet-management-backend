@@ -5,6 +5,7 @@ Provides OpenAPI/Swagger UI for the Maintenance Service
 
 from flask import request
 from flask_restx import Namespace, Resource, fields
+from app.utils.auth import require_auth
 from app.services.maintainance_service import MaintenanceService
 from app.schemas.maintainance_schema import (
     MaintenanceItemCreateSchema,
@@ -256,6 +257,8 @@ class MaintenanceList(Resource):
              })
     @api.marshal_with(pagination_model, code=200, description='Success')
     @api.response(500, 'Internal Server Error', error_model)
+    @api.response(401, 'Unauthorized')
+    @require_auth
     def get(self):
         """List all maintenance items with optional filtering and pagination"""
         try:
@@ -284,6 +287,8 @@ class MaintenanceList(Resource):
     @api.marshal_with(maintenance_item_model, code=201, description='Created')
     @api.response(400, 'Validation Error', error_model)
     @api.response(500, 'Internal Server Error', error_model)
+    @api.response(401, 'Unauthorized')
+    @require_auth
     def post(self):
         """Create a new maintenance item"""
         try:
@@ -306,6 +311,8 @@ class MaintenanceItem(Resource):
     @api.marshal_with(maintenance_item_model, code=200, description='Success')
     @api.response(404, 'Maintenance item not found', error_model)
     @api.response(500, 'Internal Server Error', error_model)
+    @api.response(401, 'Unauthorized')
+    @require_auth
     def get(self, item_id):
         """Get a specific maintenance item by ID"""
         try:
@@ -324,6 +331,8 @@ class MaintenanceItem(Resource):
     @api.response(400, 'Validation Error', error_model)
     @api.response(404, 'Maintenance item not found', error_model)
     @api.response(500, 'Internal Server Error', error_model)
+    @api.response(401, 'Unauthorized')
+    @require_auth
     def put(self, item_id):
         """Update a maintenance item (full update)"""
         try:
@@ -347,6 +356,8 @@ class MaintenanceItem(Resource):
     @api.response(400, 'Validation Error', error_model)
     @api.response(404, 'Maintenance item not found', error_model)
     @api.response(500, 'Internal Server Error', error_model)
+    @api.response(401, 'Unauthorized')
+    @require_auth
     def patch(self, item_id):
         """Partially update a maintenance item"""
         try:
@@ -368,6 +379,8 @@ class MaintenanceItem(Resource):
     @api.response(200, 'Success')
     @api.response(404, 'Maintenance item not found', error_model)
     @api.response(500, 'Internal Server Error', error_model)
+    @api.response(401, 'Unauthorized')
+    @require_auth
     def delete(self, item_id):
         """Delete a maintenance item"""
         try:
@@ -530,6 +543,8 @@ class TechnicianList(Resource):
     @api.doc('list_technicians')
     @api.marshal_list_with(technician_model, code=200)
     @api.response(500, 'Internal Server Error', error_model)
+    @api.response(401, 'Unauthorized')
+    @require_auth
     def get(self):
         """Get all technicians"""
         try:
@@ -543,6 +558,8 @@ class TechnicianList(Resource):
     @api.marshal_with(technician_model, code=201)
     @api.response(400, 'Validation Error', error_model)
     @api.response(500, 'Internal Server Error', error_model)
+    @api.response(401, 'Unauthorized')
+    @require_auth
     def post(self):
         """Create a new technician"""
         try:
@@ -564,6 +581,8 @@ class TechnicianItem(Resource):
     @api.response(400, 'Validation Error', error_model)
     @api.response(404, 'Technician not found', error_model)
     @api.response(500, 'Internal Server Error', error_model)
+    @api.response(401, 'Unauthorized')
+    @require_auth
     def put(self, tech_id):
         """Update a technician"""
         try:
@@ -582,6 +601,8 @@ class TechnicianItem(Resource):
     @api.response(200, 'Success')
     @api.response(404, 'Technician not found', error_model)
     @api.response(500, 'Internal Server Error', error_model)
+    @api.response(401, 'Unauthorized')
+    @require_auth
     def delete(self, tech_id):
         """Delete a technician"""
         try:
@@ -598,6 +619,8 @@ class PartList(Resource):
     @api.doc('list_parts', params={'q': 'Search query'})
     @api.marshal_list_with(part_model, code=200)
     @api.response(500, 'Internal Server Error', error_model)
+    @api.response(401, 'Unauthorized')
+    @require_auth
     def get(self):
         """Get all parts"""
         try:
@@ -612,6 +635,8 @@ class PartList(Resource):
     @api.marshal_with(part_model, code=201)
     @api.response(400, 'Validation Error', error_model)
     @api.response(500, 'Internal Server Error', error_model)
+    @api.response(401, 'Unauthorized')
+    @require_auth
     def post(self):
         """Create a new part"""
         try:
@@ -633,6 +658,8 @@ class PartItem(Resource):
     @api.response(400, 'Validation Error', error_model)
     @api.response(404, 'Part not found', error_model)
     @api.response(500, 'Internal Server Error', error_model)
+    @api.response(401, 'Unauthorized')
+    @require_auth
     def put(self, part_id):
         """Update a part"""
         try:
@@ -651,6 +678,8 @@ class PartItem(Resource):
     @api.response(200, 'Success')
     @api.response(404, 'Part not found', error_model)
     @api.response(500, 'Internal Server Error', error_model)
+    @api.response(401, 'Unauthorized')
+    @require_auth
     def delete(self, part_id):
         """Delete a part"""
         try:
@@ -667,6 +696,8 @@ class RecurringScheduleList(Resource):
     @api.doc('list_recurring_schedules')
     @api.marshal_list_with(recurring_schedule_model, code=200)
     @api.response(500, 'Internal Server Error', error_model)
+    @api.response(401, 'Unauthorized')
+    @require_auth
     def get(self):
         """Get all recurring schedules"""
         try:
@@ -680,6 +711,8 @@ class RecurringScheduleList(Resource):
     @api.marshal_with(recurring_schedule_model, code=201)
     @api.response(400, 'Validation Error', error_model)
     @api.response(500, 'Internal Server Error', error_model)
+    @api.response(401, 'Unauthorized')
+    @require_auth
     def post(self):
         """Create a new recurring schedule"""
         try:
@@ -701,6 +734,8 @@ class RecurringScheduleItem(Resource):
     @api.response(400, 'Validation Error', error_model)
     @api.response(404, 'Schedule not found', error_model)
     @api.response(500, 'Internal Server Error', error_model)
+    @api.response(401, 'Unauthorized')
+    @require_auth
     def put(self, schedule_id):
         """Update a recurring schedule"""
         try:
@@ -719,6 +754,8 @@ class RecurringScheduleItem(Resource):
     @api.response(200, 'Success')
     @api.response(404, 'Schedule not found', error_model)
     @api.response(500, 'Internal Server Error', error_model)
+    @api.response(401, 'Unauthorized')
+    @require_auth
     def delete(self, schedule_id):
         """Delete a recurring schedule"""
         try:

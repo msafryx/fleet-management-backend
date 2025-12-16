@@ -209,29 +209,6 @@ type .env # Windows
 
 Edit `.env` file in the maintenance service directory:
 
-```env
-# Flask Configuration
-FLASK_ENV=development
-FLASK_APP=run.py
-SECRET_KEY=your-secret-key-here
-
-# Database Configuration
-DATABASE_URL=postgresql://postgres:postgres@localhost:5433/maintenance_db
-
-# Server Configuration
-PORT=5001
-HOST=0.0.0.0
-
-# CORS Configuration
-CORS_ORIGINS=*
-
-# Pagination
-ITEMS_PER_PAGE=10
-
-# Logging
-LOG_LEVEL=DEBUG
-```
-
 **After changing `.env`:**
 - Restart the Flask application (Ctrl+C and run script again)
 

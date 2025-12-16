@@ -68,24 +68,28 @@ cd ../..
 echo ""
 
 # ===============================
-# Step 4: Check & Start PostgreSQL
+# Step 4: Check & Start PostgreSQL (Infrastructure)
 # ===============================
 echo -e "${BLUE}🗄️  Step 4: Checking PostgreSQL database...${NC}"
+echo -e "${CYAN}   Note: Database is managed by centralized infrastructure${NC}"
 
 # Check if postgres-vehicle container exists and is running
 containerStatus=$(docker ps -a --filter "name=postgres-vehicle" --format "{{.Status}}" || echo "")
+portMapping=$(docker port postgres-vehicle 5432/tcp 2>/dev/null || echo "")
 
-if [[ $containerStatus == Up* ]]; then
-    echo -e "${GREEN}✅ PostgreSQL is already running${NC}"
+if [[ $containerStatus == Up* ]] && [[ $portMapping == *"7433"* ]]; then
+    echo -e "${GREEN}✅ PostgreSQL is already running on port 7433${NC}"
 elif [ -n "$containerStatus" ]; then
-    echo -e "${YELLOW}⚠️  PostgreSQL container exists but is not running. Starting...${NC}"
-    docker-compose up -d postgres-vehicle
+    echo -e "${YELLOW}⚠️  PostgreSQL container exists but is not running (or wrong port). Starting infrastructure...${NC}"
+    # Start the centralized infrastructure database
+    docker-compose -f ../../infrastructure/data/docker-compose.yml up -d postgres-vehicle
     echo -e "${YELLOW}   Waiting for PostgreSQL to be ready...${NC}"
     sleep 15
     echo -e "${GREEN}✅ PostgreSQL started successfully${NC}"
 else
-    echo -e "${YELLOW}⚠️  PostgreSQL not found. Starting for the first time...${NC}"
-    docker-compose up -d postgres-vehicle
+    echo -e "${YELLOW}⚠️  PostgreSQL not found. Starting infrastructure database...${NC}"
+    # Start the centralized infrastructure database
+    docker-compose -f ../../infrastructure/data/docker-compose.yml up -d postgres-vehicle
     echo -e "${YELLOW}   Waiting for PostgreSQL to initialize (first-time setup)...${NC}"
     sleep 20
     echo -e "${GREEN}✅ PostgreSQL started successfully${NC}"

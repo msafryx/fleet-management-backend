@@ -1,0 +1,177 @@
+version: '3.9'
+
+# ===============================
+# Fleet Management - Centralized Data Infrastructure
+# ===============================
+#
+# This docker-compose file manages ALL PostgreSQL databases and pgAdmin
+# for the Fleet Management System.
+#
+# Included Databases:
+# - postgres-maintenance (port 5433) - Maintenance Service database
+# - postgres-driver (port 6433) - Driver Service database
+# - postgres-vehicle (port 7433) - Vehicle Service database
+# - postgres-keycloak (port 8433) - Keycloak Identity database
+#
+# Management Tools:
+# - pgAdmin (port 5050) - Unified database management interface
+#
+# Network:
+# - fleet-data-network - Shared network for all data services
+#
+# Usage:
+#   Start all databases:     docker-compose up -d
+#   Stop all databases:      docker-compose down
+#   View logs:               docker-compose logs -f
+#   Start with pgAdmin:      docker-compose --profile admin up -d
+#
+# ===============================
+
+services:
+  # ===============================
+  # Maintenance Service Database
+  # ===============================
+  postgres-maintenance:
+    image: postgres:16
+    container_name: postgres-maintenance
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: maintenance_db
+    ports:
+      - "5433:5432"
+    volumes:
+      - maintenance_pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d maintenance_db"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    networks:
+      - fleet-data-network
+    restart: always
+
+  # ===============================
+  # Driver Service Database
+  # ===============================
+  postgres-driver:
+    image: postgres:16
+    container_name: postgres-driver
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: driver_db
+    ports:
+      - "6433:5432"
+    volumes:
+      - driver_pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d driver_db"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    networks:
+      - fleet-data-network
+    restart: always
+
+  # ===============================
+  # Vehicle Service Database
+  # ===============================
+  postgres-vehicle:
+    image: postgres:16
+    container_name: postgres-vehicle
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: vehicle_db
+    ports:
+      - "7433:5432"
+    volumes:
+      - vehicle_pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d vehicle_db"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    networks:
+      - fleet-data-network
+    restart: always
+
+  # ===============================
+  # Keycloak Identity Database
+  # ===============================
+  postgres-keycloak:
+    image: postgres:16
+    container_name: postgres-keycloak
+    environment:
+      POSTGRES_USER: keycloak
+      POSTGRES_PASSWORD: keycloak_password
+      POSTGRES_DB: keycloak
+    ports:
+      - "8433:5432"
+    volumes:
+      - keycloak_pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U keycloak -d keycloak"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - fleet-data-network
+    restart: always
+
+  # ===============================
+  # pgAdmin - Unified Database Management
+  # ===============================
+  # Access: http://localhost:5050
+  # Credentials: admin@admin.com / admin123
+  #
+  # To start with databases:
+  #   docker-compose --profile admin up -d
+  # ===============================
+  pgadmin:
+    image: dpage/pgadmin4:8
+    container_name: fleet-pgadmin
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@admin.com
+      PGADMIN_DEFAULT_PASSWORD: admin123
+      PGADMIN_CONFIG_SERVER_MODE: 'False'
+      PGADMIN_CONFIG_MASTER_PASSWORD_REQUIRED: 'False'
+    ports:
+      - "5050:80"
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+    depends_on:
+      - postgres-maintenance
+      - postgres-driver
+      - postgres-vehicle
+      - postgres-keycloak
+    networks:
+      - fleet-data-network
+    profiles:
+      - admin
+    restart: always
+
+# ===============================
+# Volumes
+# ===============================
+volumes:
+  maintenance_pg_data:
+    name: maintenance_pg_data
+  driver_pg_data:
+    name: driver_pg_data
+  vehicle_pg_data:
+    name: vehicle_pg_data
+  keycloak_pg_data:
+    name: keycloak_pg_data
+  pgadmin_data:
+    name: fleet_pgadmin_data
+
+# ===============================
+# Network
+# ===============================
+networks:
+  fleet-data-network:
+    name: fleet-data-network
+    driver: bridge
+

@@ -70,9 +70,10 @@ echo -e "${GREEN}✅ Docker is running${NC}"
 echo ""
 
 # ===============================
-# Step 3: Check & Start PostgreSQL
+# Step 3: Check & Start PostgreSQL (Infrastructure)
 # ===============================
 echo -e "${BLUE}🗄️  Step 3: Checking PostgreSQL database...${NC}"
+echo -e "${CYAN}   Note: Database is managed by centralized infrastructure${NC}"
 
 # Check if postgres-driver container exists and is running
 containerStatus=$(docker ps -a --filter "name=postgres-driver" --format "{{.Status}}" || echo "")
@@ -81,14 +82,16 @@ portMapping=$(docker port postgres-driver 5432/tcp 2>/dev/null || echo "")
 if [[ $containerStatus == Up* ]] && [[ $portMapping == *"6433"* ]]; then
     echo -e "${GREEN}✅ PostgreSQL is already running on port 6433${NC}"
 elif [ -n "$containerStatus" ]; then
-    echo -e "${YELLOW}⚠️  PostgreSQL container exists but is not running (or wrong port). Restarting...${NC}"
-    docker-compose up -d postgres-driver
+    echo -e "${YELLOW}⚠️  PostgreSQL container exists but is not running (or wrong port). Starting infrastructure...${NC}"
+    # Start the centralized infrastructure database
+    docker-compose -f ../../infrastructure/data/docker-compose.yml up -d postgres-driver
     echo -e "${YELLOW}   Waiting for PostgreSQL to be ready...${NC}"
     sleep 15
     echo -e "${GREEN}✅ PostgreSQL started successfully${NC}"
 else
-    echo -e "${YELLOW}⚠️  PostgreSQL not found. Starting for the first time...${NC}"
-    docker-compose up -d postgres-driver
+    echo -e "${YELLOW}⚠️  PostgreSQL not found. Starting infrastructure database...${NC}"
+    # Start the centralized infrastructure database
+    docker-compose -f ../../infrastructure/data/docker-compose.yml up -d postgres-driver
     echo -e "${YELLOW}   Waiting for PostgreSQL to initialize (first-time setup)...${NC}"
     sleep 20
     echo -e "${GREEN}✅ PostgreSQL started successfully${NC}"
@@ -151,6 +154,7 @@ echo -e "${CYAN}============================================================${NC
 echo ""
 
 # Set environment variables for local run
+# Note: DB_PORT 6433 connects to centralized infrastructure database
 export SERVER_PORT=6001
 export DB_PORT=6433
 export DB_HOST=localhost

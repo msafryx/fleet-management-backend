@@ -53,9 +53,9 @@ if [ ! -f .env ]; then
 # Flask Configuration
 FLASK_ENV=development
 FLASK_APP=run.py
-SECRET_KEY=dev-secret-key-change-in-production-f89a7d6c8b4e3a2d
 
 # Database Configuration (PostgreSQL)
+# Note: Database is managed by centralized infrastructure at ../../infrastructure/data/
 DATABASE_URL=postgresql://postgres:postgres@localhost:5433/maintenance_db
 
 # Server Configuration
@@ -137,9 +137,10 @@ echo -e "${GREEN}✅ Dependencies installed${NC}"
 echo ""
 
 # ===============================
-# Step 4: Check & Start PostgreSQL
+# Step 4: Check & Start PostgreSQL (Infrastructure)
 # ===============================
 echo -e "${BLUE}🗄️  Step 4: Checking PostgreSQL database...${NC}"
+echo -e "${CYAN}   Note: Database is managed by centralized infrastructure${NC}"
 
 # Check if postgres-maintenance container exists and is running on the correct port
 containerStatus=$(docker ps --filter "name=postgres-maintenance" --format "{{.Status}}")
@@ -149,12 +150,13 @@ if [[ $containerStatus == Up* ]] && [[ $portMapping == *"5433"* ]]; then
     echo -e "${GREEN}✅ PostgreSQL is already running on port 5433${NC}"
 else
     if [ -n "$containerStatus" ]; then
-        echo -e "${YELLOW}⚠️  PostgreSQL container state needs update (wrong port or stopped). Recreating...${NC}"
+        echo -e "${YELLOW}⚠️  PostgreSQL container state needs update (wrong port or stopped). Starting infrastructure...${NC}"
     else
-        echo -e "${YELLOW}⚠️  PostgreSQL not found. Starting for the first time...${NC}"
+        echo -e "${YELLOW}⚠️  PostgreSQL not found. Starting infrastructure database...${NC}"
     fi
     
-    docker-compose up -d postgres-maintenance
+    # Start the centralized infrastructure database
+    docker-compose -f ../../infrastructure/data/docker-compose.yml up -d postgres-maintenance
     echo -e "${YELLOW}   Waiting for PostgreSQL to be ready...${NC}"
     sleep 15
     echo -e "${GREEN}✅ PostgreSQL started successfully${NC}"
