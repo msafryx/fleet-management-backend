@@ -99,3 +99,30 @@ def require_auth(f):
 
     return decorated
 
+def require_role(role):
+    """
+    Decorator to check if user has a specific role in Keycloak token
+    """
+    def decorator(f):
+        @wraps(f)
+        def decorated(*args, **kwargs):
+            # First check authentication
+            if current_app.config.get('AUTH_DISABLED', False):
+                return f(*args, **kwargs)
+                
+            if not hasattr(g, 'user') or not g.user:
+                abort(401, 'User not authenticated')
+                
+            # Check for realm roles
+            # Keycloak stores realm roles in: realm_access.roles
+            realm_access = g.user.get('realm_access', {})
+            roles = realm_access.get('roles', [])
+            
+            if role not in roles:
+                current_app.logger.warning(f"User {g.user.get('sub')} denied access. Required: {role}, Has: {roles}")
+                abort(403, f'Insufficient permissions: {role} role required')
+                
+            return f(*args, **kwargs)
+        return decorated
+    return decorator
+

@@ -17,6 +17,7 @@ namespace VehicleService.Api.Controllers
         }
 
         // GET: api/vehicles
+        // Accessible by all authenticated users
         [HttpGet]
         public async Task<IActionResult> GetAll([FromQuery] int? status)
         {
@@ -47,6 +48,8 @@ namespace VehicleService.Api.Controllers
         }
 
         // POST: api/vehicles
+        // Only Admins can create vehicles
+        [Authorize(Policy = "AdminOnly")]
         [HttpPost]
         public async Task<IActionResult> AddVehicle([FromBody] CreateVehicleRequest request)
         {
@@ -76,6 +79,8 @@ namespace VehicleService.Api.Controllers
         }
 
         // PUT: api/vehicles/{id}
+        // Only Admins can update vehicles
+        [Authorize(Policy = "AdminOnly")]
         [HttpPut("{id}")]
         public async Task<IActionResult> UpdateVehicle(Guid id, [FromBody] UpdateVehicleRequest request)
         {
@@ -118,6 +123,8 @@ namespace VehicleService.Api.Controllers
         }
 
         // DELETE: api/vehicles/{id}
+        // Only Admins can delete vehicles
+        [Authorize(Policy = "AdminOnly")]
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteVehicle(Guid id)
         {

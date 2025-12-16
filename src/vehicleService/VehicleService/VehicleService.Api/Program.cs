@@ -110,9 +110,17 @@ using Microsoft.AspNetCore.Authorization; // Add this
 // Add Authorization with Fallback Policy
 builder.Services.AddAuthorization(options =>
 {
+    // Default Policy: User must be authenticated
     options.FallbackPolicy = new AuthorizationPolicyBuilder()
         .RequireAuthenticatedUser()
         .Build();
+
+    // Admin Only Policy
+    options.AddPolicy("AdminOnly", policy => 
+        policy.RequireAssertion(context => 
+            context.User.IsInRole("fleet-admin") || 
+            context.User.HasClaim(c => c.Type == "realm_access" && c.Value.Contains("fleet-admin"))
+        ));
 });
 
 // Add PostgreSQL + Infrastructure Layer (DbContext + Repository)
