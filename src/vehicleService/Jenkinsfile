@@ -1,0 +1,102 @@
+pipeline {
+  agent any
+
+  environment {
+    DOCKERHUB_CREDS = 'dockerhub-creds'
+    GITOPS_PAT      = 'gitops-pat'
+
+    DOCKER_REPO = 'muhammedsafry/fleet-vehicle-service'
+
+    GITOPS_BRANCH     = 'main'
+    GITOPS_REPO_HTTPS = 'https://github.com/msafryx/fleet-gitops.git'
+    VALUES_FILE       = 'backend/values-staging.yaml'
+
+    BUILD_CONTEXT = 'src/vehicleService/VehicleService'
+    DOCKERFILE    = 'src/vehicleService/VehicleService/VehicleService.Api/Dockerfile'
+  }
+
+  stages {
+    stage('Checkout') { steps { checkout scm } }
+
+    stage('Create Image Tag') {
+      steps {
+        script {
+          def sha = sh(script: "git rev-parse --short HEAD", returnStdout: true).trim()
+          env.IMAGE_TAG = "${env.BUILD_NUMBER}-${sha}"
+          echo "IMAGE_TAG=${env.IMAGE_TAG}"
+        }
+      }
+    }
+
+    stage('Build Docker Image') {
+      steps {
+        sh """
+          docker build -f ${DOCKERFILE} -t ${DOCKER_REPO}:${IMAGE_TAG} ${BUILD_CONTEXT}
+        """
+      }
+    }
+
+    stage('Trivy Scan (Report Only)') {
+      steps {
+        sh """
+          trivy image --no-progress --scanners vuln ${DOCKER_REPO}:${IMAGE_TAG} || true
+        """
+      }
+    }
+
+    stage('Push to DockerHub') {
+      steps {
+        withCredentials([usernamePassword(credentialsId: "${DOCKERHUB_CREDS}", usernameVariable: 'DH_USER', passwordVariable: 'DH_PASS')]) {
+          sh '''
+            set -e
+            echo "$DH_PASS" | docker login -u "$DH_USER" --password-stdin
+            docker push ${DOCKER_REPO}:${IMAGE_TAG}
+          '''
+        }
+      }
+    }
+
+    stage('Update GitOps (vehicle tag)') {
+      steps {
+        withCredentials([usernamePassword(credentialsId: "${GITOPS_PAT}", usernameVariable: 'GH_USER', passwordVariable: 'GH_TOKEN')]) {
+          sh '''
+            set -e
+            rm -rf fleet-gitops
+
+            cat > /tmp/git-askpass.sh <<'EOF'
+#!/bin/sh
+case "$1" in
+  *Username*) echo "$GH_USER" ;;
+  *Password*) echo "$GH_TOKEN" ;;
+  *) echo "" ;;
+esac
+EOF
+            chmod +x /tmp/git-askpass.sh
+            export GIT_ASKPASS=/tmp/git-askpass.sh
+            export GIT_TERMINAL_PROMPT=0
+
+            git clone ${GITOPS_REPO_HTTPS} fleet-gitops
+            cd fleet-gitops
+            git checkout ${GITOPS_BRANCH}
+
+            git config user.email "jenkins@ci.local"
+            git config user.name  "jenkins"
+
+            export IMAGE_TAG="${IMAGE_TAG}"
+            yq -i '.vehicle.image.tag = strenv(IMAGE_TAG)' ${VALUES_FILE}
+
+            git add ${VALUES_FILE}
+            git commit -m "chore(staging): bump vehicle tag to ${IMAGE_TAG}" || echo "No changes"
+            git push origin ${GITOPS_BRANCH}
+
+            rm -f /tmp/git-askpass.sh
+          '''
+        }
+      }
+    }
+  }
+
+  post {
+    always { sh 'docker logout || true' }
+  }
+}
