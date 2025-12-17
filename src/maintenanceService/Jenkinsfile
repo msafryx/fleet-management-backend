@@ -82,8 +82,12 @@ EOF
             git config user.email "jenkins@ci.local"
             git config user.name  "jenkins"
 
-            export IMAGE_TAG="${IMAGE_TAG}"
-            yq -i '.maintenance.image.tag = strenv(IMAGE_TAG)' ${VALUES_FILE}
+            # Update ONLY maintenance.image.tag
+            sed -i -E '/^maintenance:/,/^[a-zA-Z0-9_-]+:/{s|^(\\s*tag:)\\s*.*$|\\1 "'"${IMAGE_TAG}"'"|}' ${VALUES_FILE}
+
+            echo "---- After update ----"
+            awk 'BEGIN{p=0} /^maintenance:/{p=1} p{print} /^vehicle:/{exit}' ${VALUES_FILE} || true
+            echo "----------------------"
 
             git add ${VALUES_FILE}
             git commit -m "chore(staging): bump maintenance tag to ${IMAGE_TAG}" || echo "No changes"
@@ -96,7 +100,5 @@ EOF
     }
   }
 
-  post {
-    always { sh 'docker logout || true' }
-  }
+  post { always { sh 'docker logout || true' } }
 }
