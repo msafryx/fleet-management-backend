@@ -11,7 +11,6 @@ pipeline {
     GITOPS_REPO_HTTPS = 'https://github.com/msafryx/fleet-gitops.git'
     VALUES_FILE       = 'backend/values-staging.yaml'
 
-    // repo build location
     BUILD_CONTEXT = 'src/DriverService'
     DOCKERFILE    = 'src/DriverService/Dockerfile'
   }
@@ -83,8 +82,12 @@ EOF
             git config user.email "jenkins@ci.local"
             git config user.name  "jenkins"
 
-            export IMAGE_TAG="${IMAGE_TAG}"
-            yq -i '.driver.image.tag = strenv(IMAGE_TAG)' ${VALUES_FILE}
+            # Update ONLY driver.image.tag
+            sed -i -E '/^driver:/,/^[a-zA-Z0-9_-]+:/{s|^(\\s*tag:)\\s*.*$|\\1 "'"${IMAGE_TAG}"'"|}' ${VALUES_FILE}
+
+            echo "---- After update ----"
+            awk 'BEGIN{p=0} /^driver:/{p=1} p{print} /^maintenance:/{exit}' ${VALUES_FILE} || true
+            echo "----------------------"
 
             git add ${VALUES_FILE}
             git commit -m "chore(staging): bump driver tag to ${IMAGE_TAG}" || echo "No changes"
@@ -97,7 +100,5 @@ EOF
     }
   }
 
-  post {
-    always { sh 'docker logout || true' }
-  }
+  post { always { sh 'docker logout || true' } }
 }
